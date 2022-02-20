@@ -13,8 +13,7 @@ rpm_size(const long width, const long height) {
   enum { MAGIC_NUMBER = 3, SIZE_DATA = 11, MAX_VAL = 4 };
   const int header = (MAGIC_NUMBER + (SIZE_DATA * 2) + MAX_VAL);
   /* TODO (sammynilla): Add in value overflow sanitizing checks. */
-  int query = (width < 1) || (height < 1); /* avoid spectre mitigation warning. */
-  if (query)
+  if (width < 1 || height < 1)
     return 0; /* Illegal size */
 
   return (unsigned long)(height * (width * 3) + header);
