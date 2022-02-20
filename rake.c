@@ -2,6 +2,7 @@
 #define _NO_CRT_STDIO_INLINE
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 #include <assert.h>
 
 #include "base_types.h"
@@ -38,23 +39,35 @@ global const char map[] =  "0000222222220000"\
 
 internal void
 fill_block(char *pixels, const long x, const long y,
-           const i32 width, const i32 height, const u32 color) {
+           const u32 width, const u32 height, const u32 color) {
 
-  long i, j;
-  for (j = 0; j < height; ++j) {
-    for (i = 0; i < width; ++i) {
-      long cx = x+i;
-      long cy = y+j;
-      rpm_set(pixels, cx, cy, color);
+  assert((width != 0) && (height != 0));
+
+  if ((width == 1) && (height == 1)) {
+    rpm_set(pixels, x, y, color);
+    return;
+  }
+  
+  {
+    u32 i, j;
+    for (j = 0; j < height; ++j) {
+      for (i = 0; i < width; ++i) {
+        long cx = x+i;
+        long cy = y+j;
+        rpm_set(pixels, cx, cy, color);
+      }
     }
   }
 }
 
 #define draw_player(buf, x, y, h, w) \
-  fill_block((buf), (x), (y), (w), (h), WHITE) 
+  fill_block((buf), (x), (y), (w), (h), WHITE)
+
+#define draw_pixel(buf, x, y) \
+  fill_block((buf), (x), (y), 1, 1, WHITE)
 
 internal void
-draw_map(char *pixels, const char *map_data, 
+draw_map(char *pixels, const char *map_data,
          const i32 width, const i32 height) {
 
   const i32 rect_w = width / MAP_WIDTH_BLOCKS;
@@ -75,6 +88,7 @@ int
 main(void) {
   enum { WIDTH = 512L, HEIGHT = 512L };
   enum { PLAYER_WIDTH = 5, PLAYER_HEIGHT = 5 };
+  enum { RAY_DEPTH = 20 };
 
   FILE *f;
   local_persist char rpm[RPM_SIZE(WIDTH, HEIGHT)];
@@ -83,14 +97,31 @@ main(void) {
 
   rpm_init(rpm, WIDTH, HEIGHT);
   {
-    const float px = 3.456f;
-    const float py = 2.345f;
-    const i32 rect_w = WIDTH / MAP_WIDTH_BLOCKS;
-    const i32 rect_h = HEIGHT / MAP_HEIGHT_BLOCKS;
-
     draw_map(rpm, map, WIDTH, HEIGHT);
-    draw_player(rpm, (long)px*rect_w, (long)py*rect_h, 
-                PLAYER_WIDTH, PLAYER_HEIGHT);
+    {
+      /* Player Properties */
+      const float player_x = 3.456f;
+      const float player_y = 2.345f;
+      const double player_angle = 1.345;
+      const i32 rect_w = WIDTH / MAP_WIDTH_BLOCKS;
+      const i32 rect_h = HEIGHT / MAP_HEIGHT_BLOCKS;
+      draw_player(rpm, (long)(player_x*rect_w), (long)(player_y*rect_h),
+                  PLAYER_WIDTH, PLAYER_HEIGHT);
+
+      {
+        double t;
+        for (t = 0; t < RAY_DEPTH; t += .05) {
+          /* NOTE (sammynilla): Consider looking into intrinsics for speed. */
+          double cx = player_x + (t * cos(player_angle));
+          double cy = player_y + (t * sin(player_angle));
+          long x = (long)(cx * rect_w);
+          long y = (long)(cy * rect_h);
+
+          if (map[(int)cx + (int)cy * MAP_WIDTH_BLOCKS] != ' ') break;
+          draw_pixel(rpm, x, y);
+        }
+      }
+    }
   }
 
   f = fopen("./out.ppm", "wb");
