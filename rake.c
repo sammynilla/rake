@@ -60,11 +60,10 @@ fill_block(char *pixels, const long x, const long y,
   }
 }
 
-#define draw_player(buf, x, y, h, w) \
-  fill_block((buf), (x), (y), (w), (h), WHITE)
-
 #define draw_pixel(buf, x, y) \
   fill_block((buf), (x), (y), 1, 1, WHITE)
+#define draw_player(buf, x, y, h, w) \
+  fill_block((buf), (x), (y), (w), (h), WHITE)
 
 internal void
 draw_map(char *pixels, const char *map_data,
@@ -96,29 +95,50 @@ main(void) {
   assert(sizeof(map) == MAP_SIZE(MAP_WIDTH_BLOCKS, MAP_HEIGHT_BLOCKS));
 
   rpm_init(rpm, WIDTH, HEIGHT);
-  {
-    draw_map(rpm, map, WIDTH, HEIGHT);
-    {
-      /* Player Properties */
-      const float player_x = 3.456f;
-      const float player_y = 2.345f;
-      const double player_angle = 1.345;
-      const i32 rect_w = WIDTH / MAP_WIDTH_BLOCKS;
-      const i32 rect_h = HEIGHT / MAP_HEIGHT_BLOCKS;
-      draw_player(rpm, (long)(player_x*rect_w), (long)(player_y*rect_h),
-                  PLAYER_WIDTH, PLAYER_HEIGHT);
 
-      {
+  draw_map(rpm, map, WIDTH, HEIGHT);
+
+  {
+    /* Player Properties */
+    float player_x = 3.456f;
+    float player_y = 2.345f;
+    double player_angle = 1.25;
+    const i32 rect_w = WIDTH / MAP_WIDTH_BLOCKS;
+    const i32 rect_h = HEIGHT / MAP_HEIGHT_BLOCKS;
+    draw_player(rpm, (long)(player_x*rect_w), (long)(player_y*rect_h),
+                PLAYER_WIDTH, PLAYER_HEIGHT);
+
+    {
+      /* NOTE (sammynilla): The central FoV for most people is 50-60degrees. 
+       * PI by itself will equate to a FoV of 180degrees.
+       */
+      const double fov = M_PI / 3;
+      size_t i;
+      for (i = 0; i < WIDTH; ++i) {
         double t;
+        /* NOTE (sammynilla): Notes on the formula below (angle=radians):
+         * 1. Subtracting (FoV*.5) from the angle gives us the first cone ray.
+         * 2. Adding FoV to (FoV*.5) gives us the final cone ray length.
+         * 3. Multiplying the previous FoV by the current iteration index and
+         *    dividing it by the max iteration index provides us with the
+         *    angle of the current ray iteration.
+         * 4. Everything together using iteration provides a FoV cone.
+         */
+        double angle = (player_angle - (fov * .5)) + ((fov * i) / WIDTH);
+        /* NOTE (sammynilla): Consider looking into intrinsics for speed. */ 
         for (t = 0; t < RAY_DEPTH; t += .05) {
-          /* NOTE (sammynilla): Consider looking into intrinsics for speed. */
-          double cx = player_x + (t * cos(player_angle));
-          double cy = player_y + (t * sin(player_angle));
-          long x = (long)(cx * rect_w);
-          long y = (long)(cy * rect_h);
+          double cx = player_x + t * cos(angle);
+          double cy = player_y + t * sin(angle);
 
           if (map[(int)cx + (int)cy * MAP_WIDTH_BLOCKS] != ' ') break;
-          draw_pixel(rpm, x, y);
+
+          {
+            long x = (long)(cx * rect_w);
+            long y = (long)(cy * rect_h);
+            b32 not_oob = ((x > 0) && (x < WIDTH) && (y > 0) && (y < HEIGHT));
+            if (not_oob)
+              draw_pixel(rpm, x, y);
+          }
         }
       }
     }
