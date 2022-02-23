@@ -3,10 +3,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
-#include <assert.h>
 
 #include "base_types.h"
+#include "stacktrace.h"
+
 #include "rpm.h"
+
+#define SCREEN_WIDTH  512L
+#define SCREEN_HEIGHT 512L
 
 /* Sample map data from the lesson plan. */
 global const char map[] =  "0000222222220000"\
@@ -32,16 +36,16 @@ global const char map[] =  "0000222222220000"\
 
 #include "pack.c"
 
-#define MAGENTA         pack_colors(255,0,255)
-#define NEON_GREEN      pack_colors(0,255,0)
-#define CORNFLOWER_BLUE pack_colors(145,178,217)
-#define WHITE           pack_colors(255,255,255)
+#define MAGENTA         pack_rgb(255,0,255)
+#define NEON_GREEN      pack_rgb(0,255,0)
+#define CORNFLOWER_BLUE pack_rgb(145,178,217)
+#define WHITE           pack_rgb(255,255,255)
 
 internal void
 fill_block(char *pixels, const long x, const long y,
            const u32 width, const u32 height, const u32 color) {
 
-  assert((width != 0) && (height != 0));
+  Assert((width != 0) && (height != 0));
 
   if ((width == 1) && (height == 1)) {
     rpm_set(pixels, x, y, color);
@@ -62,15 +66,12 @@ fill_block(char *pixels, const long x, const long y,
 
 #define draw_pixel(buf, x, y) \
   fill_block((buf), (x), (y), 1, 1, WHITE)
-#define draw_player(buf, x, y, h, w) \
-  fill_block((buf), (x), (y), (w), (h), WHITE)
 
 internal void
-draw_map(char *pixels, const char *map_data,
-         const i32 width, const i32 height) {
+draw_map(char *pixels, const char *map_data) {
 
-  const i32 rect_w = width / MAP_WIDTH_BLOCKS;
-  const i32 rect_h = height / MAP_HEIGHT_BLOCKS;
+  const i32 rect_w = SCREEN_WIDTH / MAP_WIDTH_BLOCKS;
+  const i32 rect_h = SCREEN_HEIGHT / MAP_HEIGHT_BLOCKS;
   long x, y;
   long rect_x, rect_y;
   for (y = 0; y < MAP_WIDTH_BLOCKS; y++) {
@@ -82,30 +83,64 @@ draw_map(char *pixels, const char *map_data,
     }
   }
 }
-  
+
+#define draw_player(buf, x, y, h, w) \
+  fill_block((buf), (x), (y), (w), (h), WHITE)
+
+internal void
+draw_ray(char *pixels, const char *map_data,
+         const i32 width, const i32 height,
+         const float player_x, const float player_y,
+         const double angle, const double ray_distance) {
+
+  const i32 rect_w = width / MAP_WIDTH_BLOCKS;
+  const i32 rect_h = height / MAP_HEIGHT_BLOCKS;
+  double t;
+  /* NOTE (sammynilla): Consider looking into intrinsics for speed. */ 
+  for (t = 0; t < ray_distance; t += .05) {
+    double cx = player_x + t * cos(angle);
+    double cy = player_y + t * sin(angle);
+
+    if (map_data[(int)cx + (int)cy * MAP_WIDTH_BLOCKS] != ' ') break;
+
+    {
+      long x = (long)(cx * rect_w);
+      long y = (long)(cy * rect_h);
+      b32 not_oob = ((x > 0) && (x < width) && (y > 0) && (y < height));
+      if (not_oob)
+        draw_pixel(pixels, x, y);
+    }
+  }
+}
+
+struct unit {
+  float x, y;
+  double angle;
+};
+
 int
 main(void) {
-  enum { WIDTH = 512L, HEIGHT = 512L };
   enum { PLAYER_WIDTH = 5, PLAYER_HEIGHT = 5 };
   enum { RAY_DEPTH = 20 };
 
   FILE *f;
-  local_persist char rpm[RPM_SIZE(WIDTH, HEIGHT)];
+  local_persist char rpm[RPM_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)];
 
-  assert(sizeof(map) == MAP_SIZE(MAP_WIDTH_BLOCKS, MAP_HEIGHT_BLOCKS));
+  Assert(sizeof(map) == MAP_SIZE(MAP_WIDTH_BLOCKS, MAP_HEIGHT_BLOCKS));
 
-  rpm_init(rpm, WIDTH, HEIGHT);
+  rpm_init(rpm, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  draw_map(rpm, map, WIDTH, HEIGHT);
+  draw_map(rpm, map);
 
   {
-    /* Player Properties */
-    float player_x = 3.456f;
-    float player_y = 2.345f;
-    double player_angle = 1.25;
-    const i32 rect_w = WIDTH / MAP_WIDTH_BLOCKS;
-    const i32 rect_h = HEIGHT / MAP_HEIGHT_BLOCKS;
-    draw_player(rpm, (long)(player_x*rect_w), (long)(player_y*rect_h),
+    struct unit player;
+    player.x = 3.456f;
+    player.y = 2.345f;
+    player.angle = 1.25;
+
+    const i32 rect_w = SCREEN_WIDTH / MAP_WIDTH_BLOCKS;
+    const i32 rect_h = SCREEN_HEIGHT / MAP_HEIGHT_BLOCKS;
+    draw_player(rpm, (long)(player.x*rect_w), (long)(player.y*rect_h),
                 PLAYER_WIDTH, PLAYER_HEIGHT);
 
     {
@@ -114,8 +149,7 @@ main(void) {
        */
       const double fov = M_PI / 3;
       size_t i;
-      for (i = 0; i < WIDTH; ++i) {
-        double t;
+      for (i = 0; i < SCREEN_WIDTH; ++i) {
         /* NOTE (sammynilla): Notes on the formula below (angle=radians):
          * 1. Subtracting (FoV*.5) from the angle gives us the first cone ray.
          * 2. Adding FoV to (FoV*.5) gives us the final cone ray length.
@@ -124,22 +158,10 @@ main(void) {
          *    angle of the current ray iteration.
          * 4. Everything together using iteration provides a FoV cone.
          */
-        double angle = (player_angle - (fov * .5)) + ((fov * i) / WIDTH);
-        /* NOTE (sammynilla): Consider looking into intrinsics for speed. */ 
-        for (t = 0; t < RAY_DEPTH; t += .05) {
-          double cx = player_x + t * cos(angle);
-          double cy = player_y + t * sin(angle);
-
-          if (map[(int)cx + (int)cy * MAP_WIDTH_BLOCKS] != ' ') break;
-
-          {
-            long x = (long)(cx * rect_w);
-            long y = (long)(cy * rect_h);
-            b32 not_oob = ((x > 0) && (x < WIDTH) && (y > 0) && (y < HEIGHT));
-            if (not_oob)
-              draw_pixel(rpm, x, y);
-          }
-        }
+        double ray_angle =
+          (player.angle - (fov * .5)) + ((fov * i) / SCREEN_WIDTH);
+        draw_ray(rpm, map, SCREEN_WIDTH, SCREEN_HEIGHT,
+                 player.x, player.y, ray_angle, RAY_DEPTH);
       }
     }
   }
