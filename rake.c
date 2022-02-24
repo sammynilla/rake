@@ -8,7 +8,7 @@
 
 #include "rpm.h"
 
-#define SCREEN_WIDTH  512L
+#define SCREEN_WIDTH  1024L
 #define SCREEN_HEIGHT 512L
 
 /* Sample map data from the lesson plan. */
@@ -64,12 +64,12 @@ fill_block(char *pBuf, const i32 x, const i32 y,
 internal void
 draw_map(char *pBuf, const char *pMapBuf) {
 
-  const i32 rect_w = SCREEN_WIDTH / MAP_WIDTH_BLOCKS;
+  const i32 rect_w = SCREEN_WIDTH / (MAP_WIDTH_BLOCKS * 2);
   const i32 rect_h = SCREEN_HEIGHT / MAP_HEIGHT_BLOCKS;
   i32 rect_x, rect_y;
   i32 x, y;
-  for (y = 0; y < MAP_WIDTH_BLOCKS; y++) {
-    for (x = 0; x < MAP_HEIGHT_BLOCKS; x++) {
+  for (y = 0; y < MAP_HEIGHT_BLOCKS; y++) {
+    for (x = 0; x < MAP_WIDTH_BLOCKS; x++) {
       if (pMapBuf[x+y*MAP_WIDTH_BLOCKS] == ' ') continue; /* skip empty spaces */
       rect_x = x * rect_w;
       rect_y = y * rect_h;
@@ -87,7 +87,7 @@ struct unit {
 
 internal void
 draw_unit(char *pBuf, struct unit *pUnit, const u32 color) {
-  const i32 rect_w = SCREEN_WIDTH / MAP_WIDTH_BLOCKS;
+  const i32 rect_w = SCREEN_WIDTH / (MAP_WIDTH_BLOCKS * 2);
   const i32 rect_h = SCREEN_HEIGHT / MAP_HEIGHT_BLOCKS;
   fill_block(pBuf, (i32)(pUnit->x*rect_w), (i32)(pUnit->y*rect_h),
              pUnit->width, pUnit->height, color);
@@ -96,7 +96,7 @@ draw_unit(char *pBuf, struct unit *pUnit, const u32 color) {
 internal void
 draw_ray(char *pBuf, const char *pMapBuf,
          const r32 x, const r32 y, const r64 angle, const r64 view_depth) {
-  const i32 rect_w = SCREEN_WIDTH / MAP_WIDTH_BLOCKS;
+  const i32 rect_w = SCREEN_WIDTH / (MAP_WIDTH_BLOCKS * 2);
   const i32 rect_h = SCREEN_HEIGHT / MAP_HEIGHT_BLOCKS;
   r64 t;
   /* NOTE (sammynilla): Consider looking into intrinsics for speed. */
@@ -111,8 +111,9 @@ draw_ray(char *pBuf, const char *pMapBuf,
       i32 py = (i32)(cy * rect_h);
       b32 not_oob =
         ((px > 0) && (px < SCREEN_WIDTH) && (py > 0) && (py < SCREEN_HEIGHT));
-      if (not_oob)
+      if (not_oob) {
         draw_pixel(pBuf, px, py);
+      }
     }
   }
 }

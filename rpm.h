@@ -28,9 +28,9 @@ rpm_set(void *buf, long x, long y, unsigned long color) {
   unsigned long width = 0;
 
   p += MAGIC_NUMBER;
-  // CALCULATE WIDTH
+  /* CALCULATE WIDTH */
+  while (((int)*p == DIGIT_0) && *p++);
   for (; (((int)*p >= DIGIT_0) && ((int)*p <= DIGIT_9)); *p++) {
-    if ((int)*p == DIGIT_0) continue;
     int val = ((int)*p) - DIGIT_TO_ASCII;
     width = (width * 10) + val;
   }
@@ -61,12 +61,12 @@ rpm_init(void *buf, long width, long height) {
 
   uchar *p = (uchar *)buf;
 
-  // MAGIC NUMBER
+  /* MAGIC NUMBER */
   *p++ = ASCII_P;
   *p++ = ASCII_6;
   *p++ = ASCII_NEW_LINE;
 
-  // WIDTH,HEIGHT
+  /* WIDTH,HEIGHT */
   {
     const uchar separator[2] = { ASCII_COMMA, ASCII_NEW_LINE };
     uchar ascii[MAX_DIGIT+1] = {0};
@@ -93,7 +93,7 @@ rpm_init(void *buf, long width, long height) {
     }
   }
 
-  // MAXVAL
+  /* MAXVAL */
   *p++ = ASCII_2;
   *p++ = ASCII_5;
   *p++ = ASCII_5;
