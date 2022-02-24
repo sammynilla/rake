@@ -5,15 +5,17 @@
 #define internal static
 #define local_persist static
 
-typedef int8_t    i8;
-typedef int16_t   i16;
-typedef int32_t   i32;
-typedef int64_t   i64;
+#include <stdint.h>
 
-typedef uint8_t   u8;
-typedef uint16_t  u16;
-typedef uint32_t  u32;
-typedef uint64_t  u64;
+typedef int8_t    i8;   /* char */
+typedef int16_t   i16;  /* short */
+typedef int32_t   i32;  /* int, long */
+typedef int64_t   i64;  /* long long */
+
+typedef uint8_t   u8;   /* unsigned char */
+typedef uint16_t  u16;  /* unsigned short */
+typedef uint32_t  u32;  /* unsigned int, unsigned long */
+typedef uint64_t  u64;  /* unsigned long long */
 
 typedef i32       b32;
 typedef float     r32;
