@@ -1,15 +1,15 @@
 
-#ifndef RPM_H
-#define RPM_H
+#ifndef UC_RPM_H
+#define UC_RPM_H
 
 /* NOTE (sammynilla): PPM image format specification taken from 'man ppm'
  * http://ailab.eecs.wsu.edu/wise/P1/PPM.html
  */
 
-#define RPM_SIZE(w, h) ((h) * ((w) * 3) + (3) + (10 + 1) + (10 + 1) + (4))
+#define UC_RPM_SIZE(w, h) ((h) * ((w) * 3) + (3) + (10 + 1) + (10 + 1) + (4))
 
 static unsigned long
-rpm_size(const long width, const long height) {
+uc_rpm_size(const long width, const long height) {
   enum { MAGIC_NUMBER = 3, SIZE_DATA = 11, MAX_VAL = 4 };
   const int header = (MAGIC_NUMBER + (SIZE_DATA * 2) + MAX_VAL);
   /* TODO (sammynilla): Add in value overflow sanitizing checks. */
@@ -20,7 +20,7 @@ rpm_size(const long width, const long height) {
 }
 
 static void 
-rpm_set(void *buf, long x, long y, unsigned long color) {
+uc_rpm_set(void *buf, long x, long y, unsigned long color) {
   enum { MAGIC_NUMBER = 3, SIZE_DATA = 11, MAX_VAL = 4 };
   enum { DIGIT_TO_ASCII = 48 };
   enum { DIGIT_0 = 48, DIGIT_9 = 57 };
@@ -51,7 +51,7 @@ rpm_set(void *buf, long x, long y, unsigned long color) {
  * The expected buffer should be zero-initialized before use.
  */
 static void
-rpm_init(void *buf, long width, long height) {
+uc_rpm_init(void *buf, long width, long height) {
   typedef unsigned char uchar;
   enum { 
     ASCII_0 = 0x30, ASCII_2 = 0x32, ASCII_5 = 0x35, ASCII_6 = 0x36,
@@ -100,4 +100,4 @@ rpm_init(void *buf, long width, long height) {
   *p++ = ASCII_NEW_LINE;
 }
 
-#endif /* RPM_H */
+#endif /* UC_RPM_H */

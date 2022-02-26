@@ -6,7 +6,7 @@
 #include "base_types.h"
 #include "stacktrace.h"
 
-#include "rpm.h"
+#include "uc_rpm.h"
 
 #define SCREEN_WIDTH  1024L
 #define SCREEN_HEIGHT 512L
@@ -46,14 +46,14 @@ fill_block(char *pBuf, const i32 x, const i32 y,
     return;
 
   if ((width == 1) && (height == 1)) {
-    rpm_set(pBuf, x, y, color);
+    uc_rpm_set(pBuf, x, y, color);
   } else {
     u32 i, j;
     for (j = 0; j < height; ++j) {
       for (i = 0; i < width; ++i) {
         i32 cx = x+i;
         i32 cy = y+j;
-        rpm_set(pBuf, cx, cy, color);
+        uc_rpm_set(pBuf, cx, cy, color);
       }
     }
   }
@@ -162,9 +162,9 @@ draw_unit_fov(char *pBuf, const char *pMapBuf,
 int
 main(void) {
   FILE *f;
-  local_persist char rpm[RPM_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)];
+  local_persist char rpm[UC_RPM_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)];
 
-  rpm_init(rpm, SCREEN_WIDTH, SCREEN_HEIGHT);
+  uc_rpm_init(rpm, SCREEN_WIDTH, SCREEN_HEIGHT);
 
   Assert(sizeof(map) == MAP_SIZE(MAP_WIDTH_BLOCKS, MAP_HEIGHT_BLOCKS));
 
@@ -195,7 +195,7 @@ main(void) {
           r64 indexed_ray_angle =
             player.angle-fov/2 + fov*i/hs;
           i32 ch = (i32)(vs / (t * cos(indexed_ray_angle-player.angle)));
-          u8 color = 255 - (u8)((t / player.view_depth) * 255);
+          u8 color = UINT8_MAX - (u8)((t / player.view_depth) * UINT8_MAX);
 
           fill_block(rpm, hs+i, ((vs/2)-(ch/2)), 1, ch, pack_rgb(color, 0, color));
         }
