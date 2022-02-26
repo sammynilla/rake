@@ -4,6 +4,7 @@
 #define MAGENTA         pack_rgb(255,0,255)
 #define NEON_GREEN      pack_rgb(0,255,0)
 #define CORNFLOWER_BLUE pack_rgb(145,178,217)
+#define SUNFLOWER       pack_rgb(255, 218, 3)
 #define WHITE           pack_rgb(255,255,255)
 
 internal u32

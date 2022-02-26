@@ -42,14 +42,12 @@ internal void
 fill_block(char *pBuf, const i32 x, const i32 y,
            const u32 width, const u32 height, const u32 color) {
 
-  Assert((width != 0) && (height != 0));
+  if ((width == 0) && (height == 0))
+    return;
 
   if ((width == 1) && (height == 1)) {
     rpm_set(pBuf, x, y, color);
-    return;
-  }
-
-  {
+  } else {
     u32 i, j;
     for (j = 0; j < height; ++j) {
       for (i = 0; i < width; ++i) {
@@ -62,7 +60,7 @@ fill_block(char *pBuf, const i32 x, const i32 y,
 }
 
 #define draw_pixel(pBuf, x, y) \
-  fill_block((pBuf), (x), (y), 1, 1, WHITE)
+  fill_block((pBuf), (x), (y), 1, 1, SUNFLOWER)
 
 internal void
 draw_map(char *pBuf, const char *pMapBuf) {
@@ -108,14 +106,16 @@ draw_ray(char *pBuf, const char *pMapBuf,
   const i32 rect_h =
     GET_SCREEN_SPLIT(SCREEN_HEIGHT, SCREEN_VSPLIT) / MAP_HEIGHT_BLOCKS;
   r64 t;
+  size_t iter = 0;
   /* NOTE (sammynilla): Consider looking into intrinsics for speed. */
-  for (t = 0; t < view_depth; t += .05) {
+  for (t = 0; t < view_depth; t += 0.01) {
     r64 cx = x + t * cos(angle);
     r64 cy = y + t * sin(angle);
-
+    iter++;
     if (pMapBuf[(i32)cx + (i32)cy * MAP_WIDTH_BLOCKS] != ' ')
       return t;
 
+    if (!(iter % 10))
     {
       i32 px = (i32)(cx * rect_w);
       i32 py = (i32)(cy * rect_h);
@@ -137,7 +137,7 @@ draw_unit_fov(char *pBuf, const char *pMapBuf,
   /* NOTE (sammynilla): The central FoV for most people is 50-60degrees. 
    * PI by itself will equate to a FoV of 180degrees.
    */
-  const r64 fov = M_PI / 3;
+  const r64 fov = M_PI / 3.0f;
   const size_t ray_count = GET_SCREEN_SPLIT(SCREEN_WIDTH, SCREEN_HSPLIT);
   size_t i;
   for (i = 0; i < ray_count; ++i) {
@@ -164,33 +164,41 @@ main(void) {
   FILE *f;
   local_persist char rpm[RPM_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)];
 
-  Assert(sizeof(map) == MAP_SIZE(MAP_WIDTH_BLOCKS, MAP_HEIGHT_BLOCKS));
-
   rpm_init(rpm, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+  Assert(sizeof(map) == MAP_SIZE(MAP_WIDTH_BLOCKS, MAP_HEIGHT_BLOCKS));
 
   draw_map(rpm, map);
   {
-    local_persist r64 columns[GET_SCREEN_SPLIT(SCREEN_WIDTH, SCREEN_HSPLIT)];
+    local_persist r64 col[GET_SCREEN_SPLIT(SCREEN_WIDTH, SCREEN_HSPLIT)];
 
     struct unit player;
     player.x = 3.456f;
     player.y = 2.345f;
     player.width = player.height = 5;
-    player.angle = 1.25;
+    player.angle = 1.523;
     player.view_depth = 20.0;
 
     draw_unit(rpm, &player, WHITE);
-    draw_unit_fov(rpm, map, &player, columns);
+    draw_unit_fov(rpm, map, &player, col);
 
     {
+      const r64 fov = M_PI / 3.0f;
       const i32 hs = GET_SCREEN_SPLIT(SCREEN_WIDTH, SCREEN_HSPLIT);
       const i32 vs = GET_SCREEN_SPLIT(SCREEN_HEIGHT, SCREEN_VSPLIT);
       i32 i;
-      for (i = 0; i < ArrayCount(columns); ++i) {
-        i32 ch =
-          (i32)(GET_SCREEN_SPLIT(SCREEN_HEIGHT, SCREEN_VSPLIT) / columns[i]);
+      for (i = 0; i < ArrayCount(col); ++i) {
+        r64 t = col[i];
+        if (t == 0) continue; /* Skip rendering if out of viewport. */
 
-        fill_block(rpm, hs+i, (vs/2)-(ch/2), 1, ch, MAGENTA);
+        {
+          r64 indexed_ray_angle =
+            player.angle-fov/2 + fov*i/hs;
+          i32 ch = (i32)(vs / (t * cos(indexed_ray_angle-player.angle)));
+          u8 color = 255 - (u8)((t / player.view_depth) * 255);
+
+          fill_block(rpm, hs+i, ((vs/2)-(ch/2)), 1, ch, pack_rgb(color, 0, color));
+        }
       }
     }
   }
