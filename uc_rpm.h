@@ -1,4 +1,3 @@
-
 #ifndef UC_RPM_H
 #define UC_RPM_H
 
@@ -19,7 +18,7 @@ uc_rpm_size(const long width, const long height) {
   return (unsigned long)(height * (width * 3) + header);
 }
 
-static void 
+static void
 uc_rpm_set(void *buf, long x, long y, unsigned long color) {
   enum { MAGIC_NUMBER = 3, SIZE_DATA = 11, MAX_VAL = 4 };
   enum { DIGIT_TO_ASCII = 48 };
@@ -30,11 +29,11 @@ uc_rpm_set(void *buf, long x, long y, unsigned long color) {
   p += MAGIC_NUMBER;
   /* CALCULATE WIDTH */
   while (((int)*p == DIGIT_0) && *p++);
-  for (; (((int)*p >= DIGIT_0) && ((int)*p <= DIGIT_9)); *p++) {
+  for (; (((int)*p >= DIGIT_0) && ((int)*p <= DIGIT_9)); p++) {
     int val = ((int)*p) - DIGIT_TO_ASCII;
     width = (width * 10) + val;
   }
-  *p++;
+  p++;
 
   p += SIZE_DATA + MAX_VAL;
   p += y * (width * 3) + x * 3;
@@ -53,7 +52,7 @@ uc_rpm_set(void *buf, long x, long y, unsigned long color) {
 static void
 uc_rpm_init(void *buf, long width, long height) {
   typedef unsigned char uchar;
-  enum { 
+  enum {
     ASCII_0 = 0x30, ASCII_2 = 0x32, ASCII_5 = 0x35, ASCII_6 = 0x36,
     ASCII_P = 0x50, ASCII_COMMA = 0x2C, ASCII_NEW_LINE = 0x0A,
   };
